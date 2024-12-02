@@ -1,0 +1,104 @@
+﻿@page "/weather"
+
+<h1>Weather</h1>
+
+<p>This component demonstrates showing data based on your location.</p>
+
+@if (location == null)
+{
+    <p><em>Loading your location...</em></p>
+}
+else if (weatherData == null)
+{
+    <p><em>Loading weather data...</em></p>
+}
+else
+{
+    <div>
+        <h3>Weather at your location</h3>
+        <p><strong>Location:</strong> @location</p>
+        <p><strong>Temperature:</strong> @weatherData.TempC °C / @weatherData.TempF °F</p>
+        <p><strong>Weather:</strong> @weatherData.Description</p>
+    </div>
+}
+
+@code {
+    private string? location;
+    private WeatherData? weatherData;
+
+    [Inject]
+    private HttpClient Http { get; set; }  // Inject HttpClient
+
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; }  // Inject JSRuntime
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Wait for the geolocation to be available
+        await GetLocationAsync();
+
+        // Fetch weather data after obtaining the location
+        if (!string.IsNullOrEmpty(location))
+        {
+            await GetWeatherDataAsync();
+        }
+    }
+
+    private async Task GetLocationAsync()
+    {
+        try
+        {
+            // Call the JavaScript function to get the geolocation
+            var position = await JSRuntime.InvokeAsync<GeolocationData>("getGeolocation");
+            location = $"{position.Latitude},{position.Longitude}";
+            Console.WriteLine($"Location: {location}");  // Debug log
+        }
+        catch (Exception ex)
+        {
+            location = "Unable to get your location.";
+            Console.WriteLine($"Error fetching location: {ex.Message}");  // Debug log
+        }
+    }
+
+    private async Task GetWeatherDataAsync()
+    {
+        try
+        {
+            // Format location properly for the API request (replace the comma with a plus)
+            var locationQuery = Uri.EscapeDataString(location?.Replace(",", "+"));
+            Console.WriteLine($"Requesting weather data for: {locationQuery}");  // Debug log
+
+            // Make the API call to fetch weather data
+            var response = await Http.GetFromJsonAsync<WeatherData>($"https://wttr.in/{locationQuery}?format=%C+%t");
+            Console.WriteLine($"URL looking like this: {response}");
+            if (response != null)
+            {
+                weatherData = response;
+                Console.WriteLine($"Weather data fetched: {weatherData.TempC}°C, {weatherData.Description}");  // Debug log
+            }
+            else
+            {
+                weatherData = null;
+                Console.WriteLine("No weather data received");  // Debug log
+            }
+        }
+        catch (Exception ex)
+        {
+            weatherData = null;
+            Console.WriteLine($"Error fetching weather data: {ex.Message}");  // Debug log
+        }
+    }
+
+    private class WeatherData
+    {
+        public string TempC { get; set; } = string.Empty;
+        public string TempF => (int.Parse(TempC) * 9 / 5 + 32).ToString();
+        public string Description { get; set; } = string.Empty;
+    }
+
+    private class GeolocationData
+    {
+        public double Latitude { get; set; }
+        public double Longitude { get; set; }
+    }
+}

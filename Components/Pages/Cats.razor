@@ -1,0 +1,48 @@
+﻿@page "/cats"
+
+<h1>Hello, cat person!</h1>
+
+
+<button class="btn btn-primary" @onclick="GetCats">Get random cats</button>
+
+@if (!string.IsNullOrEmpty(CatImageUrl))
+{
+    <div>
+        <p></p>
+        <img src="@CatImageUrl" alt="Random Cat" style="max-width:100%; height:auto;" />
+    </div>
+}
+
+@code {
+    private string CatImageUrl;
+
+    private async Task GetCats()
+    {
+        try
+        {
+            using var httpClient = new HttpClient();
+            // Make the API call
+            var response = await httpClient.GetFromJsonAsync<List<CatApiResponse>>("https://api.thecatapi.com/v1/images/search");
+
+            // Update the image URL from the API response
+            if (response != null && response.Count > 0)
+            {
+                CatImageUrl = response[0].Url;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle errors
+            Console.WriteLine($"Error fetching cat image: {ex.Message}");
+        }
+    }
+
+    // Model to parse the API response
+    private class CatApiResponse
+    {
+        public string Id { get; set; }
+        public string Url { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
+    }
+}
