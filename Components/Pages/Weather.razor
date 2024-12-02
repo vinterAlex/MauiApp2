@@ -2,6 +2,8 @@
 
 <h1>Weather</h1>
 
+<p> WORK IN PROGRESS - MIGHT NOT WORK</p>
+
 <p>This component demonstrates showing data based on your location.</p>
 
 @if (location == null)
@@ -48,17 +50,24 @@ else
     {
         try
         {
-            // Call the JavaScript function to get the geolocation
+            // Attempt to get the geolocation
             var position = await JSRuntime.InvokeAsync<GeolocationData>("getGeolocation");
             location = $"{position.Latitude},{position.Longitude}";
-            Console.WriteLine($"Location: {location}");  // Debug log
+            Console.WriteLine($"Location: {location}");
+        }
+        catch (JSException jsEx)
+        {
+            // Log and provide fallback location in case of geolocation errors
+            Console.WriteLine($"JavaScript error fetching location: {jsEx.Message}");
+            location = "37.7749,-122.4194"; // Fallback location (San Francisco)
         }
         catch (Exception ex)
         {
-            location = "Unable to get your location.";
-            Console.WriteLine($"Error fetching location: {ex.Message}");  // Debug log
+            location = "37.7749,-122.4194"; // Fallback location
+            Console.WriteLine($"Error fetching location: {ex.Message}");
         }
     }
+
 
     private async Task GetWeatherDataAsync()
     {
@@ -69,17 +78,37 @@ else
             Console.WriteLine($"Requesting weather data for: {locationQuery}");  // Debug log
 
             // Make the API call to fetch weather data
-            var response = await Http.GetFromJsonAsync<WeatherData>($"https://wttr.in/{locationQuery}?format=%C+%t");
-            Console.WriteLine($"URL looking like this: {response}");
-            if (response != null)
+            var url = $"https://wttr.in/{locationQuery}?format=%C+%t";
+            Console.WriteLine($"Making API request to: {url}");  // Debug log
+
+            // Fetch the raw response body as a string for debugging purposes
+            var response = await Http.GetStringAsync(url);
+
+            // Log the raw response
+            Console.WriteLine($"Raw weather data response: {response}");
+
+            // If the response is not empty, parse it into the WeatherData object
+            if (!string.IsNullOrEmpty(response))
             {
-                weatherData = response;
-                Console.WriteLine($"Weather data fetched: {weatherData.TempC}°C, {weatherData.Description}");  // Debug log
+                var tempDescription = response.Split('+');
+                if (tempDescription.Length == 2)
+                {
+                    weatherData = new WeatherData
+                        {
+                            Description = tempDescription[0].Trim(),
+                            TempC = tempDescription[1].Trim()
+                        };
+                }
+                else
+                {
+                    weatherData = null;
+                    Console.WriteLine("Unexpected response format: " + response);
+                }
             }
             else
             {
                 weatherData = null;
-                Console.WriteLine("No weather data received");  // Debug log
+                Console.WriteLine("Empty weather data response");
             }
         }
         catch (Exception ex)

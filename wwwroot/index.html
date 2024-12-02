@@ -26,18 +26,29 @@
     <script src="_framework/blazor.webview.js" autostart="false"></script>
 
     <script>
-        window.getGeolocation = async () => {
+        window.getGeolocation = () => {
             return new Promise((resolve, reject) => {
                 if (navigator.geolocation) {
                     navigator.geolocation.getCurrentPosition(
-                        (position) => resolve({ Latitude: position.coords.latitude, Longitude: position.coords.longitude }),
-                        (error) => reject(error)
+                        (position) => {
+                            resolve({
+                                Latitude: position.coords.latitude,
+                                Longitude: position.coords.longitude
+                            });
+                        },
+                        (error) => {
+                            // Log detailed error information
+                            console.error("Geolocation error code: ", error.code);
+                            console.error("Geolocation error message: ", error.message);
+                            reject(error);  // Reject with the error object
+                        }
                     );
                 } else {
-                    reject("Geolocation not supported");
+                    reject(new Error("Geolocation is not supported by this browser."));
                 }
             });
         };
+
     </script>
 
 
